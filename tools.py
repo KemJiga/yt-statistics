@@ -1,6 +1,7 @@
 import datetime
 import pymongo
 import streamlit as st
+import math
 
 
 def init_connection():
@@ -25,8 +26,9 @@ def translate_category_by_id(id):
     client = init_connection()
     cats = client["Estadisticas"]["Videos_Id"]
     dic = cats.find_one({"category_id": id})
+    cat = dic["video_type"]
 
-    return dic["video_type"]
+    return cat
 
 
 def translate_category_by_name(name):
@@ -35,6 +37,17 @@ def translate_category_by_name(name):
     dic = cats.find_one({"video_type": name})
 
     return int(dic["category_id"])
+
+
+millnames = ['', ' K', ' M', ' B', ' T']
+
+
+def millify(n):
+    n = float(n)
+    millidx = max(0, min(len(millnames) - 1,
+                         int(math.floor(0 if n == 0 else math.log10(abs(n)) / 3))))
+
+    return '{:.0f}{}'.format(n / 10 ** (3 * millidx), millnames[millidx])
 
 
 if __name__ == '__main__':

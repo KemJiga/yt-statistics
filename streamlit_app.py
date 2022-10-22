@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 
+dv = False
 # Set up webpage
 page_title = "Some Youtube statistics"
 page_icon = ":chart:"
@@ -45,18 +46,16 @@ def init_connection():
 client = init_connection()
 videos = client["Estadisticas"]["Videos"]
 
-dv = False
-
 with st.container():
-    with st.form("entry_form", clear_on_submit=True):
+    with st.form("entry_form"):
         st.subheader("Set your filters")
-        with st.expander("Geography"):
-            col1, col2 = st.columns(2)
-            selected_country = col1.selectbox("Select Country:", country, key="country")
+        # with st.expander("Geography"):
+        #     col1, col2 = st.columns(2)
+        #     selected_country = col1.selectbox("Select Country:", country, key="country")
         with st.expander("Numbers"):
             col3, col4, = st.columns(2)
             with col3:
-                category = st.selectbox("Select Category:", video_category, key="category")
+                # category = st.selectbox("Select Category:", video_category, key="category")
                 views = st.number_input("Views greater than:", min_value=0, format="%i", step=100)
                 likes = st.number_input("Likes greater than:", min_value=0, format="%i", step=100)
                 dislikes = st.number_input("Dislikes greater than:", min_value=0, format="%i", step=100)
@@ -81,43 +80,79 @@ with st.container():
         #            "ratings_disabled": rating_disabled,
         #            "video_error_or_removed": video_removed}
 
-        request = {"views": {"$gt": views},
-                   "likes": {"$gt": likes},
-                   "dislikes": {"$gt": dislikes},
-                   "comment_count": {"$gt": comments},
+        request = {"views": {"$gt": views-1},
+                   "likes": {"$gt": likes-1},
+                   "dislikes": {"$gt": dislikes-1},
+                   "comment_count": {"$gt": comments-1},
                    "trending_date": tools.pretty_date(date.strftime("%Y/%m/%d"))}
+
+        if comm_disabled != "BOTH":
+            request["comments_disabled"] = comm_disabled
+
+        # if rating_disabled != "BOTH":
+        #     request["ratings_disabled"] = rating_disabled
+        #
+        # if video_removed != "BOTH":
+        #     request["video_error_or_removed"] = video_removed
 
         "---"
 
         submitted = st.form_submit_button("Save filters")
         if submitted:
+            st.write(request)
             loaded_data = tools.request(request)
             with st.spinner('Wait for it...'):
                 time.sleep(3)
             st.success('Done!')
             dv = True
-
     if dv:
-        with st.form("Data Visualization"):
+        with st.container():
             st.subheader("Data Visualization")
-            # substitutable data
-            d1 = {"status": ["cd", "cnd"], "value": [300, 200]}
-            d2 = {"status": ["rd", "rnd"], "value": [175, 325]}
-            d3 = {"status": ["r", "nr"], "value": [50, 450]}
-
-            df1 = pd.DataFrame(data=d1)
-            df2 = pd.DataFrame(data=d2)
-            df3 = pd.DataFrame(data=d3)
 
             tv = 0
             tl = 0
             tdl = 0
             dic_cat = {}
             vid_names = []
+            total_videos = 0
+
+            comment_status = ["Disabled", "Not Disabled"]
+            cs = [0, 0]
+
+            rating_status = ["Disabled", "Not Disabled"]
+            rs = [0, 0]
+
+            video_status = ["Removed", "Not Removed"]
+            vs = [0, 0]
+
+            trending_countries = []
+
             for item in loaded_data:
+                total_videos += 1
+
                 tv += item["views"]
                 tl += item["likes"]
                 tdl += item["dislikes"]
+
+                if item["Country"] in trending_countries:
+                    pass
+                else:
+                    trending_countries.append(item["Country"])
+
+                if item["comments_disabled"] == "TRUE":
+                    cs[0] += 1
+                else:
+                    cs[1] += 1
+
+                if item["ratings_disabled"] == "TRUE":
+                    rs[0] += 1
+                else:
+                    rs[1] += 1
+
+                if item["video_error_or_removed"] == "TRUE":
+                    vs[0] += 1
+                else:
+                    vs[1] += 1
 
                 t = tools.translate_category_by_id(item["category_id"])
                 if t in dic_cat.keys():
@@ -140,6 +175,13 @@ with st.container():
             names = df["Category"]
             values = df["Views"]
 
+            d1 = {"status": comment_status, "value": cs}
+            d2 = {"status": rating_status, "value": rs}
+            d3 = {"status": video_status, "value": vs}
+
+            df1 = pd.DataFrame(data=d1)
+            df2 = pd.DataFrame(data=d2)
+            df3 = pd.DataFrame(data=d3)
 
             def plot_map(trending_countries):
                 df = []
@@ -149,13 +191,16 @@ with st.container():
                 st.map(df)
 
 
-            submitted = st.form_submit_button("Plot data")
+            #if plot:
+                #st.write("Aqui!")
+            st.metric("Total number of videos", tools.millify(total_videos))
+
             with st.expander("Sankey chart"):
                 col1, col2, col3, col4 = st.columns(4)
-                col1.metric("Views on trending", tv)
-                col2.metric("Likes", tl)
-                col3.metric("Dislikes", tdl)
-                col4.metric("Not rated", nr)
+                col1.metric("Views on trending", tools.millify(tv))
+                col2.metric("Likes", tools.millify(tl))
+                col3.metric("Dislikes", tools.millify(tdl))
+                col4.metric("Not rated", tools.millify(nr))
 
                 # Crate sankey chart
                 label = ["Views", "Total views", "Like", "Dislike", "Not rated"]
@@ -207,6 +252,5 @@ with st.container():
                 selected_video = st.selectbox("Trending videos on " + date.strftime("%Y/%m/%d"), vid_names)
                 st.write(selected_video)
                 df = ["GB", "JP", "KR", "MX", "RU"]
-                if submitted:
-                    plot_map(df)
+                plot_map(df)
 
