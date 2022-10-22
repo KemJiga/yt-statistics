@@ -113,6 +113,7 @@ with st.container():
             tl = 0
             tdl = 0
             dic_cat = {}
+            vid_names = []
             for item in loaded_data:
                 tv += item["views"]
                 tl += item["likes"]
@@ -123,6 +124,8 @@ with st.container():
                     dic_cat[t] += item["views"]
                 else:
                     dic_cat[t] = item["views"]
+
+                vid_names.append(item["title"])
 
             nr = tl + tdl
             nr = tv - nr
@@ -200,7 +203,9 @@ with st.container():
                     fig5.update_traces(textposition="inside", textinfo="percent+label")
                     st.plotly_chart(fig5, use_container_width=True)
             with st.expander("Trending Map"):
-                selected_video = st.selectbox("Trending videos on " + date.strftime("%Y/%m/%d"), video_category)
+                # TODO: another request to know the countries based on the date and vid_name
+                selected_video = st.selectbox("Trending videos on " + date.strftime("%Y/%m/%d"), vid_names)
+                st.write(selected_video)
                 df = ["GB", "JP", "KR", "MX", "RU"]
                 if submitted:
                     plot_map(df)
