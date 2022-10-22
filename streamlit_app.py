@@ -1,5 +1,6 @@
 import datetime
 import time
+import tools
 
 import streamlit as st
 import pymongo
@@ -26,6 +27,12 @@ video_category = ['All', 'Film & Animation', 'Autos & Vehicles', 'Music', 'Pets 
                   'Action/Adventure', 'Classics', 'Comedy', 'Documentary', 'Drama', 'Family', 'Foreign', 'Horror',
                   'Sci-Fi/Fantasy', 'Thriller', 'Shorts', 'Shows', 'Trailers']
 
+# Query example
+# {Country: "CA", category_id: 10, views:{$gt:1000}, likes:{$gt:1000}, dislikes:{$gt:1000}, comment_count:{$gt:1000},
+# trending_date: "17.14.11", comments_disabled: "FALSE", ratings_disabled: "FALSE", video_error_or_removed: "FALSE"}
+
+# {Country: selected_country, category_id: 10, views:{$gt:1000}, likes:{$gt:1000}, dislikes:{$gt:1000}, comment_count:{$gt:1000},
+# trending_date: "17.14.11", comments_disabled: "FALSE", ratings_disabled: "FALSE", video_error_or_removed: "FALSE"}
 
 # Set up database connection
 @st.experimental_singleton
@@ -34,13 +41,14 @@ def init_connection():
 
 
 client = init_connection()
+videos = client["Estadisticas"]["Videos"]
 
 with st.container():
     with st.form("entry_form", clear_on_submit=True):
         st.subheader("Set your filters")
         with st.expander("Geography"):
             col1, col2 = st.columns(2)
-            col1.selectbox("Select Country:", country, key="country")
+            selected_country = col1.selectbox("Select Country:", country, key="country")
         with st.expander("Numbers"):
             col3, col4, = st.columns(2)
             with col3:
@@ -58,12 +66,14 @@ with st.container():
             comm_disabled = st.radio("Comment disabled:", ["NONE", "TRUE", "FALSE"])
             rating_disabled = st.radio("Rating disabled:", ["NONE", "TRUE", "FALSE"])
             video_removed = st.radio("Video removed:", ["NONE", "TRUE", "FALSE"])
+
         "---"
+
         submitted = st.form_submit_button("Save filters")
         if submitted:
             with st.spinner('Wait for it...'):
                 time.sleep(3)
-            st.success('Done! See your request on "Data Visualization"')
+            st.success('Done!')
     with st.form("Data Visualization"):
         st.subheader("Data Visualization")
         # substitutable data
