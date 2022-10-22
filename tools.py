@@ -8,17 +8,17 @@ def init_connection():
 
 
 def pretty_date(cadena):
-    date = cadena.split(".")
-    date[0] = "20"+date[0]
-    d = datetime.date(int(date[0]), int(date[2]), int(date[1]))
+    date = cadena.split("/")
+    date[0] = date[0][2:]
+    d = date[0] + "." + date[2] + "." + date[1]
     return d
 
 
-def request(peticion):
+def request(p):
     client = init_connection()
     videos = client["Estadisticas"]["Videos"]
 
-    return videos.find(peticion)
+    return videos.find(p)
 
 
 def translate_category_by_id(id):
@@ -34,11 +34,9 @@ def translate_category_by_name(name):
     cats = client["Estadisticas"]["Videos_Id"]
     dic = cats.find_one({"video_type": name})
 
-    return dic["category_id"]
+    return int(dic["category_id"])
 
 
 if __name__ == '__main__':
-    client = init_connection()
-    cats = client["Estadisticas"]["Videos_id"]
-
-    print(cats.find({"category_id": 10}))
+    c = pretty_date("2017/11/14")
+    print(c)
