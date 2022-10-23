@@ -21,21 +21,7 @@ st.title(page_title + " " + page_icon)
 # Some data
 locations = {"CA": [43.65, -79.35], "GB": [51.50, -0.118], "JP": [35.65, 139.84], "KR": [37.53, 127.03],
              "MX": [19.43, -99.133], "RU": [55.75, 37.61]}
-country = ["All", "CA", "GB", "JP", "KR", "MX", "RU"]
-video_category = ['All', 'Film & Animation', 'Autos & Vehicles', 'Music', 'Pets & Animals', 'Sports', 'Short Movies',
-                  'Travel & Events', 'Gaming', 'Videoblogging', 'People & Blogs', 'Comedy', 'Entertainment',
-                  'News & Politics', 'Howto & Style', 'Education', 'Science & Technology', 'Movies', 'Anime/Animation',
-                  'Action/Adventure', 'Classics', 'Comedy', 'Documentary', 'Drama', 'Family', 'Foreign', 'Horror',
-                  'Sci-Fi/Fantasy', 'Thriller', 'Shorts', 'Shows', 'Trailers']
 
-# Query example
-# {Country: "CA", category_id: 10, views:{$gt:1000}, likes:{$gt:1000}, dislikes:{$gt:1000}, comment_count:{$gt:1000},
-# trending_date: "17.14.11", comments_disabled: "FALSE", ratings_disabled: "FALSE", video_error_or_removed: "FALSE"}
-
-# If country is ALL then it is not included
-# T/F also when they're none
-# {"Country": selected_country, "category_id": tools, "views":{$gt:views}, "likes":{$gt:likes}, "dislikes":{$gt:dislikes}, "comment_count":{$gt:comments},
-# "trending_date": tools, "comments_disabled": comm_disabled, "ratings_disabled": rating_disabled, "video_error_or_removed": video_removed}
 
 # Set up database connection
 @st.experimental_singleton
@@ -47,19 +33,19 @@ client = init_connection()
 videos = client["Estadisticas"]["Videos"]
 
 with st.container():
+    with st.expander("Web propose"):
+        st.info("This web works as a visual expose of some data collected from youtube videos. "
+                "It can be use to compare tendencies among videos and their geography audience.")
     with st.form("entry_form"):
         st.subheader("Set your filters")
-        # with st.expander("Geography"):
-        #     col1, col2 = st.columns(2)
-        #     selected_country = col1.selectbox("Select Country:", country, key="country")
         with st.expander("Numbers"):
             col3, col4, = st.columns(2)
             with col3:
                 # category = st.selectbox("Select Category:", video_category, key="category")
-                views = st.number_input("Views greater than:", min_value=0, format="%i", step=100)
-                likes = st.number_input("Likes greater than:", min_value=0, format="%i", step=100)
-                dislikes = st.number_input("Dislikes greater than:", min_value=0, format="%i", step=100)
-                comments = st.number_input("Comment count greater than:", min_value=0, format="%i", step=100)
+                views = st.number_input("Views greater than:", min_value=0, value=0, format="%i", step=100)
+                likes = st.number_input("Likes greater than:", min_value=0, value=0, format="%i", step=100)
+                dislikes = st.number_input("Dislikes greater than:", min_value=0, value=0, format="%i", step=100)
+                comments = st.number_input("Comment count greater than:", min_value=0, value=0, format="%i", step=100)
         with st.expander("Date"):
             date = st.date_input("Select trending date:", min_value=datetime.date(2017, 11, 14),
                                  max_value=datetime.date(2018, 6, 14), value=datetime.date(2017, 11, 14))
@@ -69,42 +55,32 @@ with st.container():
             rating_disabled = st.radio("Rating disabled:", ["BOTH", "TRUE", "FALSE"])
             video_removed = st.radio("Video removed:", ["BOTH", "TRUE", "FALSE"])
 
-        # request = {"Country": selected_country,
-        #            "category_id": tools.translate_category_by_name(category),
-        #            "views": {"$gt": views},
-        #            "likes": {"$gt": likes},
-        #            "dislikes": {"$gt": dislikes},
-        #            "comment_count": {"$gt": comments},
-        #            "trending_date": tools.pretty_date(date.strftime("%Y/%m/%d")),
-        #            "comments_disabled": comm_disabled,
-        #            "ratings_disabled": rating_disabled,
-        #            "video_error_or_removed": video_removed}
-
-        request = {"views": {"$gt": views-1},
-                   "likes": {"$gt": likes-1},
-                   "dislikes": {"$gt": dislikes-1},
-                   "comment_count": {"$gt": comments-1},
+        request = {"views": {"$gt": views},
+                   "likes": {"$gt": likes},
+                   "dislikes": {"$gt": dislikes},
+                   "comment_count": {"$gt": comments},
                    "trending_date": tools.pretty_date(date.strftime("%Y/%m/%d"))}
 
         if comm_disabled != "BOTH":
             request["comments_disabled"] = comm_disabled
 
-        # if rating_disabled != "BOTH":
-        #     request["ratings_disabled"] = rating_disabled
-        #
-        # if video_removed != "BOTH":
-        #     request["video_error_or_removed"] = video_removed
+        if rating_disabled != "BOTH":
+            request["ratings_disabled"] = rating_disabled
+
+        if video_removed != "BOTH":
+            request["video_error_or_removed"] = video_removed
 
         "---"
 
         submitted = st.form_submit_button("Save filters")
         if submitted:
-            st.write(request)
+            # st.write(request)
             loaded_data = tools.request(request)
             with st.spinner('Wait for it...'):
                 time.sleep(3)
             st.success('Done!')
             dv = True
+
     if dv:
         with st.container():
             st.subheader("Data Visualization")
@@ -125,19 +101,12 @@ with st.container():
             video_status = ["Removed", "Not Removed"]
             vs = [0, 0]
 
-            trending_countries = []
-
             for item in loaded_data:
                 total_videos += 1
 
                 tv += item["views"]
                 tl += item["likes"]
                 tdl += item["dislikes"]
-
-                if item["Country"] in trending_countries:
-                    pass
-                else:
-                    trending_countries.append(item["Country"])
 
                 if item["comments_disabled"] == "TRUE":
                     cs[0] += 1
@@ -160,7 +129,11 @@ with st.container():
                 else:
                     dic_cat[t] = item["views"]
 
-                vid_names.append(item["title"])
+                name = item["title"]
+                if name in vid_names:
+                    pass
+                else:
+                    vid_names.append(name)
 
             nr = tl + tdl
             nr = tv - nr
@@ -183,17 +156,7 @@ with st.container():
             df2 = pd.DataFrame(data=d2)
             df3 = pd.DataFrame(data=d3)
 
-            def plot_map(trending_countries):
-                df = []
-                for c in trending_countries:
-                    df.append(locations[c])
-                df = pd.DataFrame(df, columns=["lat", "lon"])
-                st.map(df)
-
-
-            #if plot:
-                #st.write("Aqui!")
-            st.metric("Total number of videos", tools.millify(total_videos))
+            st.metric("Total number of entries", tools.millify(total_videos))
 
             with st.expander("Sankey chart"):
                 col1, col2, col3, col4 = st.columns(4)
@@ -210,7 +173,7 @@ with st.container():
 
                 # data to dict, dict to sankey
                 link = dict(source=source, target=target, value=value)
-                node = dict(label=label, pad=20, thickness=30, color="#E694FF")
+                node = dict(label=label, pad=20, thickness=30, color="#5dc1b9")
                 data = go.Sankey(link=link, node=node)
 
                 # plot it
@@ -248,9 +211,24 @@ with st.container():
                     fig5.update_traces(textposition="inside", textinfo="percent+label")
                     st.plotly_chart(fig5, use_container_width=True)
             with st.expander("Trending Map"):
-                # TODO: another request to know the countries based on the date and vid_name
                 selected_video = st.selectbox("Trending videos on " + date.strftime("%Y/%m/%d"), vid_names)
-                st.write(selected_video)
-                df = ["GB", "JP", "KR", "MX", "RU"]
-                plot_map(df)
 
+                request = {"trending_date": tools.pretty_date(date.strftime("%Y/%m/%d")),
+                           "title": selected_video}
+                video_popularity = tools.request(request)
+
+                countries = []
+                for item in video_popularity:
+                    c = item["Country"]
+                    if c in countries:
+                        pass
+                    else:
+                        countries.append(c)
+
+                df = []
+                for c in countries:
+                    df.append(locations[c])
+                df = pd.DataFrame(df, columns=["lat", "lon"])
+                st.map(df)
+
+st.write("Made with :heart: by Kemer, Leonard and Will")

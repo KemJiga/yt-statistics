@@ -25,8 +25,9 @@ def request(p):
 def translate_category_by_id(id):
     client = init_connection()
     cats = client["Estadisticas"]["Videos_Id"]
-    dic = cats.find_one({"category_id": id})
-    cat = dic["video_type"]
+    dic = cats.find({"category_id": id})
+    for item in dic:
+        cat = item["video_type"]
 
     return cat
 
@@ -48,8 +49,3 @@ def millify(n):
                          int(math.floor(0 if n == 0 else math.log10(abs(n)) / 3))))
 
     return '{:.0f}{}'.format(n / 10 ** (3 * millidx), millnames[millidx])
-
-
-if __name__ == '__main__':
-    c = pretty_date("2017/11/14")
-    print(c)
